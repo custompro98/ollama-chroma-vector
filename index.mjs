@@ -10,14 +10,19 @@ const summaries = [
 ];
 
 async function createEmbedding(prompt) {
-  return ollama.embeddings({
-    model: "mxbai-embed-large",
-    prompt,
-  });
+  try {
+    return ollama.embeddings({
+      model: "mxbai-embed-large",
+      prompt,
+    });
+  } catch (error) {
+    console.error(error);
+    throw error;
+  }
 }
 
 async function seed() {
-  const collection = await chroma.createCollection({ name: "fastasy" });
+  const collection = await chroma.getOrCreateCollection({ name: "fastasy" });
 
   summaries.forEach(async (summary, index) => {
     const embed = await createEmbedding(summary);
@@ -45,14 +50,16 @@ async function query() {
 
   const { response } = await ollama.generate({
     model: "llama3",
-    prompt: `Use these summaries as inspiration: ${firstSummary} ${secondSummary}, but do not use any names of people or places from the summary. Write an adventure for a table top roleplaying game about a group of adventurers who are on a quest to find a legendary sword. The sword is said to be hidden in a hidden valley, and the adventurers must use their skills and cunning to overcome various obstacles and challenges along the way. The story should be written in a descriptive and engaging style, with a focus on character development and world-building. The adventurers should encounter a variety of challenges and obstacles, and the story should have a clear and satisfying conclusion.`,
+    system: `You are a world class storyteller. Use these summaries as inspiration: ${firstSummary} ${secondSummary}, but do not use any names of people or places from the summary. Do not try to play the game, only tell the adventure plot points.`,
+    prompt: `Write an adventure for a table top roleplaying game about a group of adventurers who are on a quest to find a legendary sword. The sword is said to be hidden in a hidden valley, and the adventurers must use their skills and cunning to overcome various obstacles and challenges along the way. The story should be written in a descriptive and engaging style, with a focus on character development and world-building. The adventurers should encounter a variety of challenges and obstacles, and the story should have a clear and satisfying conclusion.`,
   });
 
   console.log(response, "\n\n");
 
   const { response: encounters } = await ollama.generate({
     model: "llama3",
-    prompt: `Use this adventure as the setting: ${response}. Design three table top roleplaying game encounters that could be found at each part of the story, include a variety of combat encounters, social encounters, and mysteries to be solved.`,
+    system: `Use this adventure as the setting: ${response}.`,
+    prompt: `Design three table top roleplaying game encounters that could be found at each part of the story, include a variety of combat encounters, social encounters, and mysteries to be solved.`,
   });
 
   console.log(encounters, "\n\n");
